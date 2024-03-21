@@ -1,0 +1,9 @@
+#直连
+DOMAIN-SUFFIX,panbaidu.cn
+DOMAIN-SUFFIX,akamaized.net
+DOMAIN-SUFFIX,zippyshare.com
+DOMAIN-SUFFIX,sourceforge.net
+DOMAIN,challenges.cloudflare.com
+#内容：网盘
+DOMAIN-SUFFIX,megaup.net
+DOMAIN-SUFFIX,mediafire.com
