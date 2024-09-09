@@ -7,8 +7,9 @@ p: &p {type: http, interval: 3600, health-check: {enable: true, url: https://www
 proxy-providers:
   provider1:
     <<: *p
-    url: "https://你的SubStore域名/你的SubStore密钥/download/collection/你的订阅名?target=ClashMeta"
-
+    url: "http://127.0.0.1:3002/download/collection/%E8%AE%A2%E9%98%85?target=ClashMeta"
+    
+#https://你的SubStore域名/你的SubStore密钥/download/collection/你的订阅名?target=ClashMeta
 #这里是分组
 proxy-groups:
   - {name: 手动选择, type: select , include-all-providers: true}
