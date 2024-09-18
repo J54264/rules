@@ -25,14 +25,14 @@ DOMAIN,p1-play.kgslb.com
 DOMAIN,p2-play.kgslb.com
 
 # IDM
-# DOMAIN,tonec.com
-# DOMAIN,www.tonec.com
-# DOMAIN,registeridm.com
-# DOMAIN,www.registeridm.com
-# DOMAIN,secure.registeridm.com
-# DOMAIN,internetdownloadmanager.com
-# DOMAIN,www.internetdownloadmanager.com
-# DOMAIN,secure.internetdownloadmanager.com
-# DOMAIN,mirror.internetdownloadmanager.com
-# DOMAIN,mirror2.internetdownloadmanager.com
-# DOMAIN,mirror3.internetdownloadmanager.com
+DOMAIN,tonec.com
+DOMAIN,www.tonec.com
+DOMAIN,registeridm.com
+DOMAIN,www.registeridm.com
+DOMAIN,secure.registeridm.com
+DOMAIN,internetdownloadmanager.com
+DOMAIN,www.internetdownloadmanager.com
+DOMAIN,secure.internetdownloadmanager.com
+DOMAIN,mirror.internetdownloadmanager.com
+DOMAIN,mirror2.internetdownloadmanager.com
+DOMAIN,mirror3.internetdownloadmanager.com
