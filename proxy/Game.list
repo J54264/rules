@@ -2,3 +2,5 @@
 DOMAIN,origin.warframe.com
 DOMAIN,api.warframe.com
 DOMAIN,content.warframe.com
+# twitch drop
+DOMAIN,api.twitch.tv
