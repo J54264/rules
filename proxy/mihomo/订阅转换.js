@@ -125,7 +125,7 @@ function main(config) {
       name: "⭕其他",
       type: "select",
       proxies: ["✈节点选择", "♾自动选择", "DIRECT", "香港", "台湾", "新加坡", "日本", "美国", "🌐 全球", "🔁手动切换"],
-      icon: "https://testingcf.jsdelivr.net/gh/Orz-3/mini@master/Color/Other.png",
+      icon: "https://testingcf.jsdelivr.net/gh/Orz-3/mini@master/Color/Final.png",
     },
     {
       name: "香港",
