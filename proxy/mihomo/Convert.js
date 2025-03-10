@@ -209,6 +209,7 @@ function main(config) {
       path: "./ruleset/Game.list",
       behavior: "classical",
       interval: 86400,
+      format: "yaml",
       type: "http",
     },
     Proxy: {
