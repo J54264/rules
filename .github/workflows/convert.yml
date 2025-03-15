@@ -1,88 +1,57 @@
-name: Sync Rules
+name: Convert Rules
 
-# 修复触发条件
 on:
-  workflow_dispatch:    # 允许手动触发
   schedule:
-    - cron: '0 16 * * *'  # UTC 时间每天 16:00 (北京时间 0 点)
-  push:
-    branches:
-      - main
+    - cron: '0 16 * * *' # UTC时间16点=北京时间0点
+  workflow_dispatch:
 
 jobs:
-  convert-rules:
+  convert:
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      # --------------------------
-      # 步骤 1: 检出代码库
-      # --------------------------
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      # --------------------------
-      # 步骤 2: 初始化环境
-      # --------------------------
-      - name: Setup environment
-        run: |
-          mkdir -p proxy/providers/{J54264,limbopro}
-          sudo apt-get update
-          sudo apt-get install -y jq yq openssl
+    - name: Setup Env
+      run: mkdir -p ./proxy/providers
 
-      # --------------------------
-      # 步骤 3: 启动 subconverter
-      # --------------------------
-      - name: Start subconverter
-        run: |
-          # 下载最新版 subconverter
-          SUB_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f4)
-          wget -q -O subconverter.tar.gz "$SUB_URL"
-          tar -xzf subconverter.tar.gz
-          
-          # 后台启动服务
-          ./subconverter/subconverter &
-          sleep 10  # 等待服务初始化
+    - name: Get External Rules
+      run: |
+        wget -q -O ./proxy/providers/Adblock4limbo.list \
+        https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/Adblock4limbo.list
 
-      # --------------------------
-      # 步骤 4: 启动 Mihomo
-      # --------------------------
-      - name: Start Mihomo
-        run: |
-          # 下载最新版 Mihomo
-          MIHOMO_URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep "browser_download_url.*linux-amd64.*.deb" | cut -d '"' -f4)
-          wget -q -O mihomo.deb "$MIHOMO_URL"
-          
-          # 安装并启动
-          sudo dpkg -i mihomo.deb || true
-          sudo apt-get install -f -y
-          /usr/bin/mihomo --version  # 验证安装
+    - name: Run Subconverter
+      run: |
+        # 安装最新subconverter
+        curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
+          | grep "browser_download_url.*subconverter_linux64.tar.gz" \
+          | head -n 1 | cut -d '"' -f 4 | xargs wget -q
+        tar -xf subconverter_linux64.tar.gz
+        ./subconverter/subconverter &
+        python3 -m http.server 8080 --directory ./proxy/providers/ &
 
-      # --------------------------
-      # 步骤 5: 处理规则文件
-      # --------------------------
-      - name: Process rules
-        run: |
-          # 下载 J54264 规则
-          git clone --depth=1 --branch=main https://github.com/J54264/rules.git tmp/J54264
-          cp tmp/J54264/proxy/*.list proxy/providers/J54264/
+    - name: Install Mihomo
+      run: |
+        # 精确匹配amd64架构包
+        curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
+          | grep "browser_download_url.*mihomo-linux-amd64.*\.deb" \
+          | head -n 1 | cut -d '"' -f 4 | xargs wget -qO mihomo.deb
+        
+        # 强制安装并忽略错误
+        sudo dpkg --force-all -i mihomo.deb || true
+        /usr/bin/mihomo &
 
-          # 下载 limbopro 规则
-          wget -q --directory-prefix=proxy/providers/limbopro/ \
-            https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/*.list
+    - name: Convert Rules
+      run: |
+        chmod +x ./script/convert.sh
+        ./script/convert.sh
 
-          # 执行转换脚本
-          chmod +x scripts/convert_rules.sh
-          ./scripts/convert_rules.sh
-
-      # --------------------------
-      # 步骤 6: 提交变更
-      # --------------------------
-      - name: Commit and push
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add proxy/providers/
-          git commit -m "Auto update: $(date +'%Y-%m-%d %H:%M:%S')"
-          git push origin main
+    - name: Push Changes
+      run: |
+        git config user.name "AutoUpdater"
+        git config user.email "auto@example.com"
+        git add ./proxy/providers
+        git commit -m "Auto update $(date +%F)"
+        git push
