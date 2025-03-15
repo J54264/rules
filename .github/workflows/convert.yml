@@ -1,6 +1,6 @@
 name: Convert Rules
 
-on:
+于:
   schedule:
     - cron: '0 16 * * *' # UTC时间16点=北京时间0点
   workflow_dispatch:
@@ -34,7 +34,7 @@ jobs:
     - name: Run Mihomo
       run: |
         curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
-          | grep "browser_download_url.*alpha.*deb" \
+          | grep "browser_download_url.*mihomo-linux-amd64.*\.deb"
           | head -n 1 | cut -d '"' -f 4 | xargs wget -qO mihomo.deb
         sudo apt install ./mihomo.deb
         /usr/bin/mihomo &
