@@ -1,0 +1,53 @@
+name: Convert Rules
+
+on:
+  schedule:
+    - cron: '0 16 * * *' # UTC时间16点=北京时间0点
+  workflow_dispatch:
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Env
+      run: mkdir -p ./proxy/providers
+
+    - name: Get External Rules
+      run: |
+        wget -q -O ./proxy/providers/Adblock4limbo.list \
+        https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/Adblock4limbo.list
+
+    - name: Run Subconverter
+      run: |
+        curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
+          | grep "browser_download_url.*linux64.tar.gz" \
+          | head -n 1 | cut -d '"' -f 4 | xargs wget -q
+        tar -xf subconverter_linux64.tar.gz
+        ./subconverter/subconverter &
+        python3 -m http.server 8080 --directory ./proxy/providers/ &
+
+    - name: Run Mihomo
+      run: |
+        curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
+          | grep "browser_download_url.*alpha.*deb" \
+          | head -n 1 | cut -d '"' -f 4 | xargs wget -qO mihomo.deb
+        sudo apt install ./mihomo.deb
+        /usr/bin/mihomo &
+
+    - name: Convert Rules
+      run: |
+        chmod +x ./script/convert.sh
+        ./script/convert.sh
+
+    - name: Push Changes
+      run: |
+        git config user.name "AutoUpdater"
+        git config user.email "auto@example.com"
+        git add ./proxy/providers
+        git commit -m "Auto update $(date +%F)"
+        git push
