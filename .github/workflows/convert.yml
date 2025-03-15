@@ -1,12 +1,12 @@
 name: Sync Rules
 
 # 修复触发条件
-于:
+on:
   workflow_dispatch:    # 允许手动触发
   schedule:
     - cron: '0 16 * * *'  # UTC 时间每天 16:00 (北京时间 0 点)
   push:
-    分支:
+    branches:
       - main
 
 jobs:
