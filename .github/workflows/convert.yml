@@ -1,59 +1,60 @@
-name: Convert Rules
+name: Sync Rules
 
-# 事件触发器部分 (必须存在)
 于:
-  # 手动触发选项
   workflow_dispatch:
-  # 每日UTC时间16:00（北京时间0点）自动运行
   schedule:
-    - cron: '0 16 * * *'
+    - cron: '0 16 * * *'  # UTC+8 每天 0 点
 
 jobs:
-  convert:
+  convert-rules:
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Setup directories
-      run: mkdir -p ./proxy/providers
+      - name: Setup directories
+        run: |
+          mkdir -p proxy/providers/{J54264,limbopro}
+          sudo apt-get update && sudo apt-get install -y jq yq
 
-    - name: Fetch external rules
-      run: |
-        wget -q -O ./proxy/providers/Adblock4limbo.list \
-        https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/Adblock4limbo.list
+      # 启动 subconverter 后台服务
+      - name: Run subconverter
+        run: |
+          wget -q $(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f4)
+          tar -xzf subconverter_linux64.tar.gz
+          ./subconverter/subconverter &
+          sleep 10  # 等待服务启动
 
-    - name: Start Subconverter
-      run: |
-        # 下载并启动 subconverter
-        curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
-          | grep "browser_download_url.*subconverter_linux64.tar.gz" \
-          | head -n 1 | cut -d '"' -f 4 | xargs wget -q
-        tar -xf subconverter_linux64.tar.gz
-        ./subconverter/subconverter &
-        python3 -m http.server 8080 --directory ./proxy/providers/ &
+      # 启动 Mihomo 环境
+      - name: Run Mihomo
+        run: |
+          wget -qO mihomo.deb $(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep "browser_download_url.*linux-amd64" | cut -d '"' -f4)
+          sudo dpkg -i mihomo.deb || true
+          sudo apt-get install -f -y
+          /usr/bin/mihomo &
 
-    - name: Install Mihomo
-      run: |
-        # 安装 Mihomo (amd64 架构)
-        curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
-          | grep "browser_download_url.*mihomo-linux-amd64.*\.deb" \
-          | head -n 1 | cut -d '"' -f 4 | xargs wget -qO mihomo.deb
-        sudo dpkg --force-all -i mihomo.deb || true
-        /usr/bin/mihomo &
+      # 规则下载与转换
+      - name: Process rules
+        run: |
+          # 下载 J54264 规则
+          git clone --depth=1 --branch=main https://github.com/J54264/rules.git tmp/J54264
+          cp tmp/J54264/proxy/*.list ./proxy/providers/J54264/
 
-    - name: Convert rules
-      run: |
-        chmod +x ./script/convert.sh
-        ./script/convert.sh
+          # 下载 limbopro 规则
+          wget -q -P proxy/providers/limbopro/ https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/*.list
 
-    - name: Commit changes
-      run: |
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
-        git add ./proxy/providers
-        git commit -m "Auto update: $(date +'%Y-%m-%d %H:%M')"
-        git push
+          # 执行转换脚本
+          chmod +x scripts/convert_rules.sh
+          ./scripts/convert_rules.sh
+
+      # 提交变更
+      - name: Commit changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add proxy/providers/
+          git commit -m "Auto-update rules $(date +'%Y-%m-%d %H:%M:%S')"
+          git push origin main
