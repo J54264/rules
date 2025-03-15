@@ -1,9 +1,13 @@
 name: Sync Rules
 
+# 修复触发条件
 于:
-  workflow_dispatch:
+  workflow_dispatch:    # 允许手动触发
   schedule:
-    - cron: '0 16 * * *'  # UTC+8 每天 0 点
+    - cron: '0 16 * * *'  # UTC 时间每天 16:00 (北京时间 0 点)
+  push:
+    分支:
+      - main
 
 jobs:
   convert-rules:
@@ -12,49 +16,73 @@ jobs:
       contents: write
 
     steps:
+      # --------------------------
+      # 步骤 1: 检出代码库
+      # --------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup directories
+      # --------------------------
+      # 步骤 2: 初始化环境
+      # --------------------------
+      - name: Setup environment
         run: |
           mkdir -p proxy/providers/{J54264,limbopro}
-          sudo apt-get update && sudo apt-get install -y jq yq
+          sudo apt-get update
+          sudo apt-get install -y jq yq openssl
 
-      # 启动 subconverter 后台服务
-      - name: Run subconverter
+      # --------------------------
+      # 步骤 3: 启动 subconverter
+      # --------------------------
+      - name: Start subconverter
         run: |
-          wget -q $(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f4)
-          tar -xzf subconverter_linux64.tar.gz
+          # 下载最新版 subconverter
+          SUB_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f4)
+          wget -q -O subconverter.tar.gz "$SUB_URL"
+          tar -xzf subconverter.tar.gz
+          
+          # 后台启动服务
           ./subconverter/subconverter &
-          sleep 10  # 等待服务启动
+          sleep 10  # 等待服务初始化
 
-      # 启动 Mihomo 环境
-      - name: Run Mihomo
+      # --------------------------
+      # 步骤 4: 启动 Mihomo
+      # --------------------------
+      - name: Start Mihomo
         run: |
-          wget -qO mihomo.deb $(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep "browser_download_url.*linux-amd64" | cut -d '"' -f4)
+          # 下载最新版 Mihomo
+          MIHOMO_URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep "browser_download_url.*linux-amd64.*.deb" | cut -d '"' -f4)
+          wget -q -O mihomo.deb "$MIHOMO_URL"
+          
+          # 安装并启动
           sudo dpkg -i mihomo.deb || true
           sudo apt-get install -f -y
-          /usr/bin/mihomo &
+          /usr/bin/mihomo --version  # 验证安装
 
-      # 规则下载与转换
+      # --------------------------
+      # 步骤 5: 处理规则文件
+      # --------------------------
       - name: Process rules
         run: |
           # 下载 J54264 规则
           git clone --depth=1 --branch=main https://github.com/J54264/rules.git tmp/J54264
-          cp tmp/J54264/proxy/*.list ./proxy/providers/J54264/
+          cp tmp/J54264/proxy/*.list proxy/providers/J54264/
 
           # 下载 limbopro 规则
-          wget -q -P proxy/providers/limbopro/ https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/*.list
+          wget -q --directory-prefix=proxy/providers/limbopro/ \
+            https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/*.list
 
           # 执行转换脚本
           chmod +x scripts/convert_rules.sh
           ./scripts/convert_rules.sh
 
-      # 提交变更
-      - name: Commit changes
+      # --------------------------
+      # 步骤 6: 提交变更
+      # --------------------------
+      - name: Commit and push
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add proxy/providers/
-          git commit -m "Auto-update rules $(date +'%Y-%m-%d %H:%M:%S')"
+          git commit -m "Auto update: $(date +'%Y-%m-%d %H:%M:%S')"
           git push origin main
