@@ -24,19 +24,23 @@ jobs:
 
     - name: Run Subconverter
       run: |
+        # 安装最新subconverter
         curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
-          | grep "browser_download_url.*linux64.tar.gz" \
+          | grep "browser_download_url.*subconverter_linux64.tar.gz" \
           | head -n 1 | cut -d '"' -f 4 | xargs wget -q
         tar -xf subconverter_linux64.tar.gz
         ./subconverter/subconverter &
         python3 -m http.server 8080 --directory ./proxy/providers/ &
 
-    - name: Run Mihomo
+    - name: Install Mihomo
       run: |
+        # 精确匹配amd64架构包
         curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
-          | grep "browser_download_url.*mihomo-linux-amd64.*\.deb"
+          | grep "browser_download_url.*mihomo-linux-amd64.*\.deb" \
           | head -n 1 | cut -d '"' -f 4 | xargs wget -qO mihomo.deb
-        sudo apt install ./mihomo.deb
+        
+        # 强制安装并忽略错误
+        sudo dpkg --force-all -i mihomo.deb || true
         /usr/bin/mihomo &
 
     - name: Convert Rules
