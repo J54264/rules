@@ -1,36 +1,31 @@
 #!/bin/bash
 
-RULES_DIR="proxy/providers"
-SUB_URL="http://127.0.0.1:25500"
+RULES_DIR="./proxy/providers"
+BASE_URL="http://127.0.0.1:8080"
 
-convert_to_clash() {
-  local source=$1
-  local file=$2
-  local base_name=$(basename "$file" .list)
+process_rule() {
+  local file=$1
+  local name=$(basename "$file" .list)
   
-  # 生成 subconverter 参数
-  local encoded_url=$(echo -n "https://raw.githubusercontent.com/${source}/${file}" | openssl base64 -A)
-  
-  # 转换域名规则 (type=3)
-  wget -qO "${RULES_DIR}/${source}/${base_name}_Domain.yaml" "${SUB_URL}/getruleset?type=3&url=${encoded_url}"
-  
-  # 转换 IP 规则 (type=4)
-  wget -qO "${RULES_DIR}/${source}/${base_name}_IP.yaml" "${SUB_URL}/getruleset?type=4&url=${encoded_url}"
+  # 域名规则
+  wget -q -O "${RULES_DIR}/${name}_domain.yaml" \
+    "http://127.0.0.1:25500/getruleset?type=3&url=$(echo -n "${BASE_URL}/${file}" | base64)"
+  grep -E '^payload:' -v "${RULES_DIR}/${name}_domain.yaml" > "${RULES_DIR}/${name}_domain.txt"
+  /usr/bin/mihomo convert-ruleset domain text \
+    "${RULES_DIR}/${name}_domain.txt" \
+    "${RULES_DIR}/${name}_domain.mrs"
 
-  # 使用 Mihomo 生成优化格式
-  /usr/bin/mihomo convert-ruleset domain text "${RULES_DIR}/${source}/${base_name}_Domain.yaml" "${RULES_DIR}/${source}/${base_name}.mrs"
-  /usr/bin/mihomo convert-ruleset ipcidr text "${RULES_DIR}/${source}/${base_name}_IP.yaml" "${RULES_DIR}/${source}/${base_name}_IP.mrs"
+  # IP规则 
+  wget -q -O "${RULES_DIR}/${name}_ip.yaml" \
+    "http://127.0.0.1:25500/getruleset?type=4&url=$(echo -n "${BASE_URL}/${file}" | base64)"
+  grep -E '^payload:' -v "${RULES_DIR}/${name}_ip.yaml" > "${RULES_DIR}/${name}_ip.txt"
+  /usr/bin/mihomo convert-ruleset ipcidr text \
+    "${RULES_DIR}/${name}_ip.txt" \
+    "${RULES_DIR}/${name}_ip.mrs"
+
+  # 清理中间文件
+  rm -f "${RULES_DIR}/${name}_domain.yaml" "${RULES_DIR}/${name}_ip.yaml"
 }
 
-# 处理 J54264 规则
-find "${RULES_DIR}/J54264" -name "*.list" | while read -r file; do
-  convert_to_clash "J54264/rules/proxy" "$(basename "$file")"
-done
-
-# 处理 limbopro 规则
-find "${RULES_DIR}/limbopro" -name "*.list" | while read -r file; do
-  convert_to_clash "limbopro/Adblock4limbo/main" "$(basename "$file")"
-done
-
-# 清理中间文件
-find "${RULES_DIR}" -name "*.yaml" -delete
+export -f process_rule
+find "${RULES_DIR}" -name "*.list" -exec bash -c 'process_rule "$@"' _ {} \;
