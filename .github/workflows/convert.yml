@@ -1,54 +1,35 @@
-name: Build rules
+name: Generate Proxy Rules
 
 on:
-  workflow_dispatch:  # 允许手动触发
-  schedule:
-    - cron: '0 16 * * *'  # 每天 UTC+8 0:00 触发
   push:
     branches:
-      - main  # 假设你的默认分支是 main
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # 允许写入仓库内容
     steps:
-      # 1. 检出你的仓库 J54264/rules
-      - name: Checkout J54264/rules repository
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          repository: J54264/rules  # 你的仓库地址
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. 设置环境变量和 Git 配置
-      - name: Set variables
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          echo "BUILDTIME=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
-          echo "REPODIR=$PWD" >> $GITHUB_ENV
-
-      # 3. 将 J54264/rules 的 proxy 文件夹复制到临时目录
       - name: Copy proxy folder from J54264/rules
         run: |
           mkdir -p temp/rules/proxy
-          cp -r proxy/*.list temp/rules/proxy/  # 直接使用已检出的 proxy 文件夹
+          cp -r proxy/*.list temp/rules/proxy/
 
-      # 4. 克隆 limbopro/Adblock4limbo 并提取 Adblock4limbo.list（优化为稀疏检出）
       - name: Sparse checkout limbopro/Adblock4limbo for Adblock4limbo.list
         run: |
-          mkdir -p temp/limbopro
+          mkdir -p temp/rules/proxy
           git init temp/limbopro
           cd temp/limbopro
           git remote add origin https://github.com/limbopro/Adblock4limbo.git
           git config core.sparseCheckout true
           echo "Adblock4limbo.list" > .git/info/sparse-checkout
           git pull --depth 1 origin main
-          cp Adblock4limbo.list ../rules/proxy/
+          cp Adblock4limbo.list ../../temp/rules/proxy/
           cd ../..
 
-      # 5. 启动 subconverter 服务用于规则转换
       - name: Background run subconverter
         run: |
           curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
@@ -58,43 +39,38 @@ jobs:
             | xargs wget -q
           tar -xf subconverter_linux64.tar.gz
           ./subconverter/subconverter &
-          python3 -m http.server 8080 --bind 127.0.0.1 --directory './rule/' &
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory './temp/rules/' &
 
-      # 6. 启动 mihomo 服务用于生成 .mrs 文件
-      - name: Background run mihomo
+      - name: Install mihomo
         run: |
           curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
-            | grep "browser_download_url.*mihomo-linux-amd64-alpha.*.deb" \
+            | grep "browser_download_url.*mihomo-linux-amd64" \
+            | grep -v "go" \
             | head -n 1 \
             | cut -d '"' -f 4 \
-            | xargs wget -q -O mihomo-linux-amd64-alpha.deb
-          sudo apt install --fix-missing ./mihomo-linux-amd64-alpha.deb
-          /usr/bin/mihomo &
+            | xargs wget -q -O mihomo.gz
+          gunzip mihomo.gz
+          chmod +x mihomo
 
-      # 7. 执行规则转换脚本
       - name: Start convert
         run: |
-          chmod +x ./script/convert.sh
-          ./script/convert.sh
+          chmod +x ./convert.sh
+          ./convert.sh
 
-      # 8. 将生成的文件移动到指定目录
       - name: Move generated files to providers directory
         run: |
           mkdir -p rules/proxy/providers
-          mv temp/rules/proxy/*_Domain.yaml temp/rules/proxy/*_IP.yaml temp/rules/proxy/*_Domain.mrs temp/rules/proxy/*_IP.mrs rules/proxy/providers/
-
-      # 9. 清理临时目录
-      - name: Clean up temporary directory
-        run: |
-          rm -rf temp/
-
-      # 10. 提交并推送变更
-      - name: Commit and Push Changes
-        run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            git add --all
-            git commit -m "${{ env.BUILDTIME }} rule update"
-            git push origin main
+          if ls temp/rules/proxy/*_Domain.yaml temp/rules/proxy/*_IP.yaml temp/rules/proxy/*_Domain.mrs temp/rules/proxy/*_IP.mrs 2>/dev/null; then
+            mv temp/rules/proxy/*_Domain.yaml temp/rules/proxy/*_IP.yaml temp/rules/proxy/*_Domain.mrs temp/rules/proxy/*_IP.mrs rules/proxy/providers/
           else
-            echo "No changes to commit"
+            echo "No matching files found in temp/rules/proxy/"
+            exit 1
           fi
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add rules/proxy/providers/*
+          git commit -m "Update proxy rules" || echo "No changes to commit"
+          git push
