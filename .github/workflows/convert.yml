@@ -12,15 +12,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # 允许提交代码 [[5]][[9]]
     steps:
       # 检出当前仓库
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: J54264/rules  # 目标仓库路径 [[2]]
+          repository: J54264/rules  # 指定目标仓库路径 [[2]][[6]]
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
+          fetch-depth: 0  # 获取完整历史记录
 
       # 设置Git配置
       - name: Set Git config
@@ -28,9 +28,11 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # 创建临时目录
-      - name: Create temp directory
-        run: mkdir -p temp/rules/proxy
+      # 创建临时目录结构
+      - name: Create temp directories
+        run: |
+          mkdir -p temp/rules/proxy
+          mkdir -p temp/limbopro
 
       # 复制原始proxy文件
       - name: Copy proxy files
@@ -39,21 +41,22 @@ jobs:
       # 克隆Adblock4limbo并提取文件
       - name: Sparse checkout Adblock4limbo.list
         run: |
-          mkdir -p temp/limbopro
           cd temp/limbopro
           git init
           git remote add origin https://github.com/limbopro/Adblock4limbo.git
-          echo "/Adblock4limbo.list" > .git/info/sparse-checkout  # 添加路径前缀 [[7]]
+          echo "/Adblock4limbo.list" > .git/info/sparse-checkout
           git config core.sparseCheckout true
-          git pull --depth=1 origin main
-          cp Adblock4limbo.list ../proxy/  # 确保路径正确 [[3]]
+          git pull --depth 1 origin main
+          # 修正路径为 ../rules/proxy/，确保层级正确 [[4]][[7]]
+          cp Adblock4limbo.list ../rules/proxy/
+          cd ../..
 
       # 启动Subconverter服务
       - name: Start Subconverter
         run: |
           wget -q https://github.com/tindy2013/subconverter/releases/latest/download/subconverter_linux64.tar.gz
           tar -xf subconverter_linux64.tar.gz
-          ./subconverter/subconverter -p 25690 &  # 明确指定默认端口 [[8]]
+          ./subconverter/subconverter -p 25690 &  # 明确端口 [[8]]
           sleep 5  # 等待服务启动
 
       # 启动Mihomo服务
