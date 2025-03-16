@@ -1,35 +1,59 @@
-name: Generate Proxy Rules
+name: Build rules
 
 on:
+  workflow_dispatch:  # 允许手动触发
+  schedule:
+    - cron: '32 18 * * *'  # 每天 UTC+8 2:32 触发
   push:
     branches:
-      - main
-  workflow_dispatch:
+      - main  # 假设你的默认分支是 main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许写入仓库内容
     steps:
-      - name: Checkout repository
+      # 1. 检出你的仓库 J54264/rules
+      - name: Checkout J54264/rules repository
         uses: actions/checkout@v4
+        with:
+          repository: J54264/rules  # 你的仓库地址
+          token: ${{ secrets.GITHUB_TOKEN }}
 
+      # 2. 设置环境变量和 Git 配置
+      - name: Set variables
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "BUILDTIME=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          echo "REPODIR=$PWD" >> $GITHUB_ENV
+
+      # 3. 创建 temp 文件夹
+      - name: Create temp directory
+        run: |
+          mkdir -p temp
+
+      # 4. 将 J54264/rules 的 proxy 文件夹复制到临时目录
       - name: Copy proxy folder from J54264/rules
         run: |
           mkdir -p temp/rules/proxy
-          cp -r proxy/*.list temp/rules/proxy/
+          cp -r proxy/*.list temp/rules/proxy/  # 直接使用已检出的 proxy 文件夹
 
+      # 5. 克隆 limbopro/Adblock4limbo 并提取 Adblock4limbo.list（优化为稀疏检出）
       - name: Sparse checkout limbopro/Adblock4limbo for Adblock4limbo.list
         run: |
-          mkdir -p temp/rules/proxy
+          mkdir -p temp/limbopro
           git init temp/limbopro
           cd temp/limbopro
           git remote add origin https://github.com/limbopro/Adblock4limbo.git
           git config core.sparseCheckout true
           echo "Adblock4limbo.list" > .git/info/sparse-checkout
           git pull --depth 1 origin main
-          cp Adblock4limbo.list ../../temp/rules/proxy/
+          cp Adblock4limbo.list ../rules/proxy/
           cd ../..
 
+      # 6. 启动 subconverter 服务用于规则转换
       - name: Background run subconverter
         run: |
           curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
@@ -41,36 +65,41 @@ jobs:
           ./subconverter/subconverter &
           python3 -m http.server 8080 --bind 127.0.0.1 --directory './temp/rules/' &
 
-      - name: Install mihomo
+      # 7. 启动 mihomo 服务用于生成 .mrs 文件
+      - name: Background run mihomo
         run: |
           curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
-            | grep "browser_download_url.*mihomo-linux-amd64" \
-            | grep -v "go" \
+            | grep "browser_download_url.*mihomo-linux-amd64-alpha.*.deb" \
             | head -n 1 \
             | cut -d '"' -f 4 \
-            | xargs wget -q -O mihomo.gz
-          gunzip mihomo.gz
-          chmod +x mihomo
+            | xargs wget -q -O mihomo-linux-amd64-alpha.deb
+          sudo apt install --fix-missing ./mihomo-linux-amd64-alpha.deb
+          /usr/bin/mihomo &
 
+      # 8. 执行规则转换脚本
       - name: Start convert
         run: |
-          chmod +x ./convert.sh
-          ./convert.sh
+          chmod +x ./script/convert.sh
+          ./script/convert.sh
 
+      # 9. 将生成的文件移动到指定目录
       - name: Move generated files to providers directory
         run: |
           mkdir -p rules/proxy/providers
-          if ls temp/rules/proxy/*_Domain.yaml temp/rules/proxy/*_IP.yaml temp/rules/proxy/*_Domain.mrs temp/rules/proxy/*_IP.mrs 2>/dev/null; then
-            mv temp/rules/proxy/*_Domain.yaml temp/rules/proxy/*_IP.yaml temp/rules/proxy/*_Domain.mrs temp/rules/proxy/*_IP.mrs rules/proxy/providers/
-          else
-            echo "No matching files found in temp/rules/proxy/"
-            exit 1
-          fi
+          mv temp/rules/proxy/*_Domain.yaml temp/rules/proxy/*_IP.yaml temp/rules/proxy/*_Domain.mrs temp/rules/proxy/*_IP.mrs rules/proxy/providers/
 
-      - name: Commit and push changes
+      # 10. 清理临时目录
+      - name: Clean up temporary directory
         run: |
-          git config --global user.name 'GitHub Action'
-          git config --global user.email 'action@github.com'
-          git add rules/proxy/providers/*
-          git commit -m "Update proxy rules" || echo "No changes to commit"
-          git push
+          rm -rf temp/
+
+      # 11. 提交并推送变更
+      - name: Commit and Push Changes
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            git add --all
+            git commit -m "${{ env.BUILDTIME }} rule update"
+            git push origin main
+          else
+            echo "No changes to commit"
+          fi
