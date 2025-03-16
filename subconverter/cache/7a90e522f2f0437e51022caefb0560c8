@@ -1,0 +1,38 @@
+#DOMAIN-SUFFIX：域名后缀匹配
+#DOMAIN：域名匹配
+#DOMAIN-KEYWORD：域名关键字匹配
+#IP-CIDR：IP段匹配
+#SRC-IP-CIDR：源IP段匹配
+#GEOIP：GEOIP数据库（国家代码）匹配
+#DST-PORT：目标端口匹配
+#SRC-PORT：源端口匹配
+#PROCESS-NAME：源进程名匹配
+#RULE-SET：Rule Provider规则匹配
+#MATCH：全匹配
+
+# PotPlayer
+DOMAIN,alea.adam.ad.daum.net
+DOMAIN,wat.ad.daum.net
+DOMAIN,display.ad.daum.net
+DOMAIN,analytics.ad.daum.net
+DOMAIN,ad.daum.net
+DOMAIN,play.kakao.com
+DOMAIN,track.tiara.daum.net
+DOMAIN,t1.daumcdn.net
+DOMAIN,p1-play.edge4k.com
+DOMAIN,p2-play.edge4k.com
+DOMAIN,p1-play.kgslb.com
+DOMAIN,p2-play.kgslb.com
+
+# IDM
+DOMAIN,tonec.com
+DOMAIN,www.tonec.com
+DOMAIN,registeridm.com
+DOMAIN,www.registeridm.com
+DOMAIN,secure.registeridm.com
+DOMAIN,internetdownloadmanager.com
+DOMAIN,www.internetdownloadmanager.com
+DOMAIN,secure.internetdownloadmanager.com
+DOMAIN,mirror.internetdownloadmanager.com
+DOMAIN,mirror2.internetdownloadmanager.com
+DOMAIN,mirror3.internetdownloadmanager.com
