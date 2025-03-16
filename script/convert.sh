@@ -17,12 +17,11 @@ download_and_check() {
     local url=$2
     local output_yaml_file=$3
 
-    # 下载文件
     if wget -q --no-proxy -O "$output_file" "$url"; then
         echo "Generated $output_file:"
         cat "$output_file"
-        # 检查文件是否包含有效规则
-        if grep -qE "(DOMAIN|IP-CIDR)" "$output_file"; then
+        # 检查文件是否包含 payload（适配 subconverter 输出）
+        if grep -q "payload:" "$output_file"; then
             cp "$output_file" "$output_yaml_file"
             echo "Saved to $output_yaml_file"
         else
@@ -40,9 +39,11 @@ find . -maxdepth 1 -name "*.list" | while read -r file; do
     BASENAME=$(basename "$file" .list)
     OUTPUT_FILE_DOMAIN_YAML="$OUTPUT_DIR/${BASENAME}_domain.yaml"
     OUTPUT_FILE_IP_YAML="$OUTPUT_DIR/${BASENAME}_ip.yaml"
+    TEMP_FILE_DOMAIN_YAML="$OUTPUT_DIR/temp_domain_$BASENAME.yaml"
+    TEMP_FILE_IP_YAML="$OUTPUT_DIR/temp_ip_$BASENAME.yaml"
 
-    download_and_check "temp_domain_$BASENAME.yaml" "http://127.0.0.1:25500/getruleset?type=3&url=$RAW_URL_BASE64" "$OUTPUT_FILE_DOMAIN_YAML"
-    download_and_check "temp_ip_$BASENAME.yaml" "http://127.0.0.1:25500/getruleset?type=4&url=$RAW_URL_BASE64" "$OUTPUT_FILE_IP_YAML"
+    download_and_check "$TEMP_FILE_DOMAIN_YAML" "http://127.0.0.1:25500/getruleset?type=3&url=$RAW_URL_BASE64" "$OUTPUT_FILE_DOMAIN_YAML"
+    download_and_check "$TEMP_FILE_IP_YAML" "http://127.0.0.1:25500/getruleset?type=4&url=$RAW_URL_BASE64" "$OUTPUT_FILE_IP_YAML"
 done
 
 # 2. 将 .yaml 文件转换为 .mrs
@@ -67,4 +68,4 @@ done
 
 # 保留临时文件供调试
 echo "Temporary files retained for debugging:"
-ls -l temp_*.yaml || echo "No temporary files"
+ls -l "$OUTPUT_DIR"/temp_*.yaml || echo "No temporary files"
