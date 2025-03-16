@@ -14,7 +14,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      # 1. 检出目标仓库 J54264/rules
       - name: Checkout J54264/rules repository
         uses: actions/checkout@v4
         with:
@@ -22,7 +21,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: main
 
-      # 2. 设置环境变量
       - name: Set variables
         run: |
           git config --global user.name "github-actions[bot]"
@@ -30,14 +28,24 @@ jobs:
           echo "BUILDTIME=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
           echo "REPODIR=$PWD" >> $GITHUB_ENV
 
-      # 3. 克隆 limbopro/Adblock4limbo 并提取 Adblock4limbo.list
-      - name: Clone limbopro/Adblock4limbo and copy Adblock4limbo.list
+      - name: Clean up submodule residuals
         run: |
-          git clone https://github.com/limbopro/Adblock4limbo.git /tmp/Adblock4limbo
-          mkdir -p ./proxy
-          cp /tmp/Adblock4limbo/Adblock4limbo.list ./proxy/
+          git rm -f Adblock4limbo || true
+          rm -rf .gitmodules Adblock4limbo
 
-      # 4. 启动 subconverter 服务
+      - name: Fetch Adblock4limbo.list
+        run: |
+          mkdir -p ./proxy
+          wget -q -O ./proxy/Adblock4limbo.list https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/Adblock4limbo.list
+
+      # 添加调试步骤：检查 .list 文件内容
+      - name: Debug list files
+        run: |
+          echo "Listing proxy directory contents:"
+          ls -l ./proxy/
+          echo "Contents of .list files:"
+          find ./proxy -name "*.list" -exec echo "File: {}" \; -exec cat {} \;
+
       - name: Background run subconverter
         run: |
           curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
@@ -49,7 +57,6 @@ jobs:
           /tmp/subconverter/subconverter &
           python3 -m http.server 8080 --bind 127.0.0.1 --directory './proxy/' &
 
-      # 5. 启动 mihomo 服务
       - name: Background run mihomo
         run: |
           curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
@@ -60,23 +67,26 @@ jobs:
           sudo apt install --fix-missing /tmp/mihomo-linux-amd64-alpha.deb
           /usr/bin/mihomo &
 
-      # 6. 执行转换脚本
       - name: Start convert
         run: |
           chmod +x ./script/convert.sh
           ./script/convert.sh
 
-      # 7. 清理临时文件
+      # 添加调试步骤：检查生成的文件
+      - name: Debug generated files
+        run: |
+          echo "Generated files in proxy/providers:"
+          ls -l ./proxy/providers/ || echo "No files generated"
+
       - name: Clean up temporary files
         run: |
-          rm -rf /tmp/Adblock4limbo /tmp/subconverter /tmp/mihomo-linux-amd64-alpha.deb /tmp/subconverter_linux64.tar.gz
+          rm -rf /tmp/subconverter /tmp/mihomo-linux-amd64-alpha.deb /tmp/subconverter_linux64.tar.gz
           rm -f ./proxy/Adblock4limbo.list
 
-      # 8. 提交并推送更改
       - name: Commit and Push Changes
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            git add --all
+          git add .
+          if git status --porcelain | grep -q .; then
             git commit -m "${{ env.BUILDTIME }} rules conversion"
             git push origin main
           else
