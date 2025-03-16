@@ -3,7 +3,7 @@
 # 定义基础 URL 和本地目录
 BASE_URL="http://127.0.0.1:8080"
 LOCAL_DIR="./proxy"
-OUTPUT_DIR="./proxy/providers"
+OUTPUT_DIR="$LOCAL_DIR/providers"
 
 # 切换到 proxy 目录
 cd "$LOCAL_DIR" || exit
@@ -19,8 +19,13 @@ download_and_check() {
 
     # 下载文件
     if wget -q --no-proxy -O "$output_file" "$url"; then
-        # 直接复制到目标 YAML 文件
-        cp "$output_file" "$output_yaml_file"
+        # 检查文件是否为空（无有效规则）
+        if grep -qE "(DOMAIN|IP-CIDR)" "$output_file"; then
+            cp "$output_file" "$output_yaml_file"
+        else
+            echo "Skipping $output_yaml_file: no valid domains or IPs found"
+            rm -f "$output_file"
+        fi
     else
         echo "Error downloading $url" >&2
     fi
@@ -68,5 +73,6 @@ find "$OUTPUT_DIR" -name "*.yaml" | while read -r file; do
         echo "文件 $file 转换成功为 $output_file"
     else
         echo "文件 $file 转换失败"
+        rm -f "$output_file"
     fi
 done
