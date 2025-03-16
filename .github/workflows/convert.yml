@@ -1,9 +1,9 @@
 name: Build Rules
 
 on:
-  workflow_dispatch:  # 手动触发
+  workflow_dispatch:
   schedule:
-    - cron: '32 18 * * *'  # 每天 UTC 18:32（北京时间 2:32）触发
+    - cron: '32 18 * * *'
   push:
     branches:
       - main
@@ -33,9 +33,9 @@ jobs:
       # 3. 克隆 limbopro/Adblock4limbo 并提取 Adblock4limbo.list
       - name: Clone limbopro/Adblock4limbo and copy Adblock4limbo.list
         run: |
-          git clone https://github.com/limbopro/Adblock4limbo.git
-          mkdir -p ./proxy  # 确保 proxy 目录存在
-          cp Adblock4limbo/Adblock4limbo.list ./proxy/
+          git clone https://github.com/limbopro/Adblock4limbo.git /tmp/Adblock4limbo
+          mkdir -p ./proxy
+          cp /tmp/Adblock4limbo/Adblock4limbo.list ./proxy/
 
       # 4. 启动 subconverter 服务
       - name: Background run subconverter
@@ -44,9 +44,9 @@ jobs:
             | grep "browser_download_url.*subconverter_linux64.tar.gz" \
             | head -n 1 \
             | cut -d '"' -f 4 \
-            | xargs wget -q
-          tar -xf subconverter_linux64.tar.gz
-          ./subconverter/subconverter &
+            | xargs wget -q -P /tmp/
+          tar -xf /tmp/subconverter_linux64.tar.gz -C /tmp/
+          /tmp/subconverter/subconverter &
           python3 -m http.server 8080 --bind 127.0.0.1 --directory './proxy/' &
 
       # 5. 启动 mihomo 服务
@@ -56,8 +56,8 @@ jobs:
             | grep "browser_download_url.*mihomo-linux-amd64-alpha.*.deb" \
             | head -n 1 \
             | cut -d '"' -f 4 \
-            | xargs wget -q -O mihomo-linux-amd64-alpha.deb
-          sudo apt install --fix-missing ./mihomo-linux-amd64-alpha.deb
+            | xargs wget -q -O /tmp/mihomo-linux-amd64-alpha.deb
+          sudo apt install --fix-missing /tmp/mihomo-linux-amd64-alpha.deb
           /usr/bin/mihomo &
 
       # 6. 执行转换脚本
@@ -66,7 +66,13 @@ jobs:
           chmod +x ./script/convert.sh
           ./script/convert.sh
 
-      # 7. 提交并推送更改
+      # 7. 清理临时文件
+      - name: Clean up temporary files
+        run: |
+          rm -rf /tmp/Adblock4limbo /tmp/subconverter /tmp/mihomo-linux-amd64-alpha.deb /tmp/subconverter_linux64.tar.gz
+          rm -f ./proxy/Adblock4limbo.list
+
+      # 8. 提交并推送更改
       - name: Commit and Push Changes
         run: |
           if [ -n "$(git status --porcelain)" ]; then
