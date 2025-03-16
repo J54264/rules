@@ -1,27 +1,34 @@
 name: Build rules
 
 on:
-  workflow_dispatch:
-  # 每天 2:32 (UTC+8) 触发一次
+  workflow_dispatch:  # Manual trigger
+  # Runs daily at 2:32 AM (UTC+8), which is 18:32 UTC
   schedule:
     - cron: '32 18 * * *'
   push:
     branches:
-      - master
+      - main  # Assuming your default branch is 'main'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write  # Allow writing to the repository
     steps:
-      # 步骤1：检出主仓库
-      - name: Checkout repository
+      # Step 1: Checkout your repository (J54264/rules)
+      - name: Checkout J54264/rules repository
         uses: actions/checkout@v4
         with:
+          repository: J54264/rules
           token: ${{ secrets.GITHUB_TOKEN }}
+          path: ./rules  # Clone into './rules' directory
 
-      # 步骤2：设置全局变量，包括构建时间和仓库目录
+      # Step 2: Clone limbopro/Adblock4limbo repository
+      - name: Clone limbopro/Adblock4limbo
+        run: |
+          git clone https://github.com/limbopro/Adblock4limbo.git ./Adblock4limbo
+
+      # Step 3: Set up environment variables and Git configuration
       - name: Set variables
         run: |
           git config --global user.name "github-actions[bot]"
@@ -29,13 +36,7 @@ jobs:
           echo "BUILDTIME=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
           echo "REPODIR=$PWD" >> $GITHUB_ENV
 
-      # 步骤3：克隆 J54264/rules 和 limbopro/Adblock4limbo 仓库
-      - name: Clone repositories
-        run: |
-          git clone https://github.com/J54264/rules.git
-          git clone https://github.com/limbopro/Adblock4limbo.git
-
-      # 步骤4：下载并后台运行 subconverter
+      # Step 4: Start subconverter in the background for rule conversion
       - name: Background run subconverter
         run: |
           curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
@@ -45,9 +46,9 @@ jobs:
             | xargs wget -q
           tar -xf subconverter_linux64.tar.gz
           ./subconverter/subconverter &
-          python3 -m http.server 8080 --bind 127.0.0.1 --directory './rule/' &
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory './rules/proxy' &
 
-      # 步骤5：下载并后台运行 mihomo
+      # Step 5: Start mihomo in the background for .mrs conversion
       - name: Background run mihomo
         run: |
           curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
@@ -58,25 +59,26 @@ jobs:
           sudo apt install --fix-missing ./mihomo-linux-amd64-alpha.deb
           /usr/bin/mihomo &
 
-      # 步骤6：执行转换脚本
-      - name: Start conversion
+      # Step 6: Execute the conversion script
+      - name: Start convert
         run: |
-          chmod +x ./script/convert.sh
-          ./script/convert.sh
+          chmod +x ./rules/script/convert.sh
+          ./rules/script/convert.sh
 
-      # 步骤7：提交并推送更改
+      # Step 7: Commit and push changes to J54264/rules
       - name: Commit and Push Changes
         run: |
+          cd ./rules
           if [ -n "$(git status --porcelain)" ]; then
             git add --all
-            git commit -m "${{ env.BUILDTIME }} for rules"
-            git push origin master
+            git commit -m "${{ env.BUILDTIME }} - Update rules"
+            git push origin main
           else
             echo "No changes to commit"
           fi
 
-      # 步骤8：清理克隆的仓库
-      - name: Clean up cloned repositories
+      # Step 8: Clean up cloned repository and temporary files
+      - name: Clean up
         run: |
-          rm -rf rules
-          rm -rf Adblock4limbo
+          rm -rf ./Adblock4limbo  # Remove cloned Adblock4limbo repository
+          rm -rf ./rules/proxy/*.list  # Remove original .list files after conversion
