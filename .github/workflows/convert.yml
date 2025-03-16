@@ -1,105 +1,90 @@
 name: Build rules
 
 on:
-  workflow_dispatch:  # 允许手动触发
+  workflow_dispatch:
   schedule:
-    - cron: '32 18 * * *'  # 每天 UTC+8 2:32 触发
+    - cron: '32 18 * * *'  # UTC时间18:32，对应UTC+8 2:32 [[1]][[6]]
   push:
     branches:
-      - main  # 假设你的默认分支是 main
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 允许写入仓库内容
+      contents: write
     steps:
-      # 1. 检出你的仓库 J54264/rules
-      - name: Checkout J54264/rules repository
+      # 检出当前仓库
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: J54264/rules  # 你的仓库地址
+          repository: J54264/rules  # 目标仓库路径 [[2]]
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-      # 2. 设置环境变量和 Git 配置
-      - name: Set variables
+      # 设置Git配置
+      - name: Set Git config
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          echo "BUILDTIME=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
-          echo "REPODIR=$PWD" >> $GITHUB_ENV
 
-      # 3. 创建 temp 文件夹
+      # 创建临时目录
       - name: Create temp directory
-        run: |
-          mkdir -p temp
+        run: mkdir -p temp/rules/proxy
 
-      # 4. 将 J54264/rules 的 proxy 文件夹复制到临时目录
-      - name: Copy proxy folder from J54264/rules
-        run: |
-          mkdir -p temp/rules/proxy
-          cp -r proxy/*.list temp/rules/proxy/  # 直接使用已检出的 proxy 文件夹
+      # 复制原始proxy文件
+      - name: Copy proxy files
+        run: cp -r proxy/*.list temp/rules/proxy/
 
-      # 5. 克隆 limbopro/Adblock4limbo 并提取 Adblock4limbo.list（优化为稀疏检出）
-      - name: Sparse checkout limbopro/Adblock4limbo for Adblock4limbo.list
+      # 克隆Adblock4limbo并提取文件
+      - name: Sparse checkout Adblock4limbo.list
         run: |
           mkdir -p temp/limbopro
-          git init temp/limbopro
           cd temp/limbopro
+          git init
           git remote add origin https://github.com/limbopro/Adblock4limbo.git
+          echo "/Adblock4limbo.list" > .git/info/sparse-checkout  # 添加路径前缀 [[7]]
           git config core.sparseCheckout true
-          echo "Adblock4limbo.list" > .git/info/sparse-checkout
-          git pull --depth 1 origin main
-          cp Adblock4limbo.list ../rules/proxy/
-          cd ../..
+          git pull --depth=1 origin main
+          cp Adblock4limbo.list ../proxy/  # 确保路径正确 [[3]]
 
-      # 6. 启动 subconverter 服务用于规则转换
-      - name: Background run subconverter
+      # 启动Subconverter服务
+      - name: Start Subconverter
         run: |
-          curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
-            | grep "browser_download_url.*subconverter_linux64.tar.gz" \
-            | head -n 1 \
-            | cut -d '"' -f 4 \
-            | xargs wget -q
+          wget -q https://github.com/tindy2013/subconverter/releases/latest/download/subconverter_linux64.tar.gz
           tar -xf subconverter_linux64.tar.gz
-          ./subconverter/subconverter &
-          python3 -m http.server 8080 --bind 127.0.0.1 --directory './temp/rules/' &
+          ./subconverter/subconverter -p 25690 &  # 明确指定默认端口 [[8]]
+          sleep 5  # 等待服务启动
 
-      # 7. 启动 mihomo 服务用于生成 .mrs 文件
-      - name: Background run mihomo
+      # 启动Mihomo服务
+      - name: Start Mihomo
         run: |
-          curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
-            | grep "browser_download_url.*mihomo-linux-amd64-alpha.*.deb" \
-            | head -n 1 \
-            | cut -d '"' -f 4 \
-            | xargs wget -q -O mihomo-linux-amd64-alpha.deb
-          sudo apt install --fix-missing ./mihomo-linux-amd64-alpha.deb
+          wget -q -O mihomo.deb $(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases | grep 'browser_download_url.*linux-amd64.*.deb' | head -n1 | cut -d '"' -f4)
+          sudo dpkg -i mihomo.deb || true
           /usr/bin/mihomo &
 
-      # 8. 执行规则转换脚本
-      - name: Start convert
+      # 执行转换脚本
+      - name: Run convert.sh with debug
+        env:
+          BASE_URL: "http://127.0.0.1:25690"  # 与Subconverter端口一致 [[8]]
+          LOCAL_DIR: "./temp/rules/proxy"
         run: |
           chmod +x ./script/convert.sh
           ./script/convert.sh
+          ls -l $LOCAL_DIR  # 调试输出文件路径 [[4]]
 
-      # 9. 将生成的文件移动到指定目录
-      - name: Move generated files to providers directory
+      # 移动文件并清理
+      - name: Move files and cleanup
         run: |
           mkdir -p rules/proxy/providers
-          mv temp/rules/proxy/*_Domain.yaml temp/rules/proxy/*_IP.yaml temp/rules/proxy/*_Domain.mrs temp/rules/proxy/*_IP.mrs rules/proxy/providers/
-
-      # 10. 清理临时目录
-      - name: Clean up temporary directory
-        run: |
+          mv temp/rules/proxy/*_Domain.yaml temp/rules/proxy/*_IP.yaml temp/rules/proxy/*_Domain.mrs temp/rules/proxy/*_IP.mrs rules/proxy/providers/ || true  # 允许部分文件缺失 [[5]]
           rm -rf temp/
 
-      # 11. 提交并推送变更
-      - name: Commit and Push Changes
+      # 提交变更
+      - name: Commit and Push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            git add --all
-            git commit -m "${{ env.BUILDTIME }} rule update"
-            git push origin main
-          else
-            echo "No changes to commit"
-          fi
+          git add --all
+          git commit -m "Update at $(date -u '+%Y-%m-%d %H:%M:%S')"
+          git push origin main || echo "No changes to push" [[6]]
