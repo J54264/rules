@@ -2,92 +2,81 @@ name: Build rules
 
 on:
   workflow_dispatch:
+  # 每天 2:32 (UTC+8) 触发一次
   schedule:
-    - cron: '32 18 * * *'  # UTC时间18:32，对应UTC+8 2:32 [[1]][[6]]
+    - cron: '32 18 * * *'
   push:
     branches:
-      - main
+      - master
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 允许提交代码 [[5]][[9]]
+      contents: write
     steps:
-      # 检出当前仓库
+      # 步骤1：检出主仓库
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: J54264/rules  # 指定目标仓库路径 [[2]][[6]]
           token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0  # 获取完整历史记录
 
-      # 设置Git配置
-      - name: Set Git config
+      # 步骤2：设置全局变量，包括构建时间和仓库目录
+      - name: Set variables
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          echo "BUILDTIME=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+          echo "REPODIR=$PWD" >> $GITHUB_ENV
 
-      # 创建临时目录结构
-      - name: Create temp directories
+      # 步骤3：克隆 J54264/rules 和 limbopro/Adblock4limbo 仓库
+      - name: Clone repositories
         run: |
-          mkdir -p temp/rules/proxy
-          mkdir -p temp/limbopro
+          git clone https://github.com/J54264/rules.git
+          git clone https://github.com/limbopro/Adblock4limbo.git
 
-      # 复制原始proxy文件
-      - name: Copy proxy files
-        run: cp -r proxy/*.list temp/rules/proxy/
-
-      # 克隆Adblock4limbo并提取文件
-      - name: Sparse checkout Adblock4limbo.list
+      # 步骤4：下载并后台运行 subconverter
+      - name: Background run subconverter
         run: |
-          cd temp/limbopro
-          git init
-          git remote add origin https://github.com/limbopro/Adblock4limbo.git
-          echo "/Adblock4limbo.list" > .git/info/sparse-checkout
-          git config core.sparseCheckout true
-          git pull --depth 1 origin main
-          # 修正路径为 ../rules/proxy/，确保层级正确 [[4]][[7]]
-          cp Adblock4limbo.list ../rules/proxy/
-          cd ../..
-
-      # 启动Subconverter服务
-      - name: Start Subconverter
-        run: |
-          wget -q https://github.com/tindy2013/subconverter/releases/latest/download/subconverter_linux64.tar.gz
+          curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
+            | grep "browser_download_url.*subconverter_linux64.tar.gz" \
+            | head -n 1 \
+            | cut -d '"' -f 4 \
+            | xargs wget -q
           tar -xf subconverter_linux64.tar.gz
-          ./subconverter/subconverter -p 25690 &  # 明确端口 [[8]]
-          sleep 5  # 等待服务启动
+          ./subconverter/subconverter &
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory './rule/' &
 
-      # 启动Mihomo服务
-      - name: Start Mihomo
+      # 步骤5：下载并后台运行 mihomo
+      - name: Background run mihomo
         run: |
-          wget -q -O mihomo.deb $(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases | grep 'browser_download_url.*linux-amd64.*.deb' | head -n1 | cut -d '"' -f4)
-          sudo dpkg -i mihomo.deb || true
+          curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
+            | grep "browser_download_url.*mihomo-linux-amd64-alpha.*.deb" \
+            | head -n 1 \
+            | cut -d '"' -f 4 \
+            | xargs wget -q -O mihomo-linux-amd64-alpha.deb
+          sudo apt install --fix-missing ./mihomo-linux-amd64-alpha.deb
           /usr/bin/mihomo &
 
-      # 执行转换脚本
-      - name: Run convert.sh with debug
-        env:
-          BASE_URL: "http://127.0.0.1:25690"  # 与Subconverter端口一致 [[8]]
-          LOCAL_DIR: "./temp/rules/proxy"
+      # 步骤6：执行转换脚本
+      - name: Start conversion
         run: |
           chmod +x ./script/convert.sh
           ./script/convert.sh
-          ls -l $LOCAL_DIR  # 调试输出文件路径 [[4]]
 
-      # 移动文件并清理
-      - name: Move files and cleanup
+      # 步骤7：提交并推送更改
+      - name: Commit and Push Changes
         run: |
-          mkdir -p rules/proxy/providers
-          mv temp/rules/proxy/*_Domain.yaml temp/rules/proxy/*_IP.yaml temp/rules/proxy/*_Domain.mrs temp/rules/proxy/*_IP.mrs rules/proxy/providers/ || true  # 允许部分文件缺失 [[5]]
-          rm -rf temp/
+          if [ -n "$(git status --porcelain)" ]; then
+            git add --all
+            git commit -m "${{ env.BUILDTIME }} for rules"
+            git push origin master
+          else
+            echo "No changes to commit"
+          fi
 
-      # 提交变更
-      - name: Commit and Push
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 步骤8：清理克隆的仓库
+      - name: Clean up cloned repositories
         run: |
-          git add --all
-          git commit -m "Update at $(date -u '+%Y-%m-%d %H:%M:%S')"
-          git push origin main || echo "No changes to push" [[6]]
+          rm -rf rules
+          rm -rf Adblock4limbo
