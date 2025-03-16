@@ -1,9 +1,9 @@
-name: Convert Rules
+name: Rule Converter
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 16 * * *'  # UTC时间16:00=北京时间0:00
+    - cron: '0 16 * * *'  # UTC时间16点=北京时间0点
 
 jobs:
   convert:
@@ -12,46 +12,72 @@ jobs:
       contents: write
 
     steps:
-    - name: Checkout code
+    # ---------------------------
+    # 步骤1：克隆仓库
+    # ---------------------------
+    - name: Clone Main Repo
       uses: actions/checkout@v4
+      with:
+        repository: J54264/rules
+        path: main-repo
+        sparse-checkout: "proxy/*.list"
 
-    - name: Prepare directories
+    - name: Clone Adblock4limbo
       run: |
-        mkdir -p ./proxy/providers
-        
-    - name: Get external rules
-      run: |
-        wget -q -O ./proxy/Adblock4limbo.list \
-        https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/Adblock4limbo.list
+        git clone --depth 1 --filter=blob:none \
+          --sparse https://github.com/limbopro/Adblock4limbo \
+          --no-checkout
+        cd Adblock4limbo
+        git sparse-checkout init --cone
+        git sparse-checkout set Adblock4limbo.list
+        git checkout
 
-    - name: Start Subconverter
+    # ---------------------------
+    # 步骤2：安装依赖工具
+    # ---------------------------
+    - name: Install Subconverter
       run: |
-        curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
-          | grep "browser_download_url.*subconverter_linux64.tar.gz" \
-          | head -n 1 | cut -d '"' -f 4 | xargs wget -q
-        tar -xf subconverter_linux64.tar.gz
+        # 下载最新subconverter
+        SUB_URL=$(curl -s https://api.github.com/repos/tindy2013/subconverter/releases/latest | grep "browser_download_url.*linux64.tar.gz" | cut -d '"' -f 4)
+        wget -q $SUB_URL -O subconverter.tar.gz
+        tar -xzf subconverter.tar.gz
         ./subconverter/subconverter &
-        timeout 30 bash -c 'until curl -sf http://127.0.0.1:25500; do sleep 1; done'
-        python3 -m http.server 8080 --directory ./proxy/ &
 
     - name: Install Mihomo
       run: |
-        curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
-          | grep "browser_download_url.*mihomo-linux-amd64.*\.deb" \
-          | head -n 1 | cut -d '"' -f 4 | xargs wget -qO mihomo.deb
+        # 下载amd64架构的Mihomo
+        MIHOMO_URL=$(curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases/latest | grep "browser_download_url.*mihomo-linux-amd64.*\.deb" | cut -d '"' -f 4)
+        wget -q $MIHOMO_URL -O mihomo.deb
         sudo dpkg --force-all -i mihomo.deb || true
-        /usr/bin/mihomo &
-        sleep 10
 
-    - name: Convert rules
+    # ---------------------------
+    # 步骤3：准备规则文件
+    # ---------------------------
+    - name: Prepare Rules
       run: |
-        chmod +x ./script/convert.sh
-        ./script/convert.sh
+        mkdir -p ./workdir
+        find ./main-repo/proxy -name "*.list" -exec cp {} ./workdir \;
+        cp ./Adblock4limbo/Adblock4limbo.list ./workdir/
+        cd workdir && nohup python3 -m http.server 8080 >/dev/null 2>&1 &
 
-    - name: Commit changes
+    # ---------------------------
+    # 步骤4：执行转换脚本
+    # ---------------------------
+    - name: Run Conversion
       run: |
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
-        git add ./proxy/providers/*
-        git commit -m "Auto update: $(date +'%Y-%m-%d %H:%M') with YAML"
+        chmod +x ./scripts/convert.sh
+        ./scripts/convert.sh
+
+    # ---------------------------
+    # 步骤5：提交结果
+    # ---------------------------
+    - name: Commit Changes
+      run: |
+        git config --global user.name "AutoUpdater"
+        git config --global user.email "auto@noreply.com"
+        git clone https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/J54264/rules.git output-repo
+        cp -r ./output/* output-repo/proxy/providers/
+        cd output-repo
+        git add .
+        git commit -m "AutoUpdate: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         git push
