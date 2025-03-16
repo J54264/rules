@@ -1,34 +1,28 @@
-name: Build rules
+name: Build Rules
 
 on:
   workflow_dispatch:  # 手动触发
-  # 每天 UTC+8 时间 2:32 触发（即 UTC 18:32）
   schedule:
-    - cron: '32 18 * * *'
+    - cron: '32 18 * * *'  # 每天 UTC 18:32（北京时间 2:32）触发
   push:
     branches:
-      - main  # 假设您的默认分支是 'main'
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 允许写入仓库
+      contents: write
     steps:
-      # 第1步：检出您的仓库 (J54264/rules)
+      # 1. 检出目标仓库 J54264/rules
       - name: Checkout J54264/rules repository
         uses: actions/checkout@v4
         with:
           repository: J54264/rules
           token: ${{ secrets.GITHUB_TOKEN }}
-          path: ./rules  # 克隆到 './rules' 目录
+          ref: main
 
-      # 第2步：克隆 limbopro/Adblock4limbo 仓库
-      - name: Clone limbopro/Adblock4limbo
-        run: |
-          git clone https://github.com/limbopro/Adblock4limbo.git ./Adblock4limbo
-
-      # 第3步：设置环境变量和 Git 配置
+      # 2. 设置环境变量
       - name: Set variables
         run: |
           git config --global user.name "github-actions[bot]"
@@ -36,7 +30,14 @@ jobs:
           echo "BUILDTIME=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
           echo "REPODIR=$PWD" >> $GITHUB_ENV
 
-      # 第4步：在后台启动 subconverter 用于规则转换
+      # 3. 克隆 limbopro/Adblock4limbo 并提取 Adblock4limbo.list
+      - name: Clone limbopro/Adblock4limbo and copy Adblock4limbo.list
+        run: |
+          git clone https://github.com/limbopro/Adblock4limbo.git
+          mkdir -p ./proxy  # 确保 proxy 目录存在
+          cp Adblock4limbo/Adblock4limbo.list ./proxy/
+
+      # 4. 启动 subconverter 服务
       - name: Background run subconverter
         run: |
           curl -s https://api.github.com/repos/tindy2013/subconverter/releases \
@@ -46,9 +47,9 @@ jobs:
             | xargs wget -q
           tar -xf subconverter_linux64.tar.gz
           ./subconverter/subconverter &
-          python3 -m http.server 8080 --bind 127.0.0.1 --directory './rules/proxy' &
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory './proxy/' &
 
-      # 第5步：在后台启动 mihomo 用于 .mrs 转换
+      # 5. 启动 mihomo 服务
       - name: Background run mihomo
         run: |
           curl -s https://api.github.com/repos/MetaCubeX/mihomo/releases \
@@ -59,27 +60,19 @@ jobs:
           sudo apt install --fix-missing ./mihomo-linux-amd64-alpha.deb
           /usr/bin/mihomo &
 
-      # 第6步：执行转换脚本
+      # 6. 执行转换脚本
       - name: Start convert
-        working-directory: ./rules  # 设置工作目录为 ./rules
         run: |
-          chmod +x script/convert.sh
+          chmod +x ./script/convert.sh
           ./script/convert.sh
 
-      # 第7步：提交并推送更改到 J54264/rules
+      # 7. 提交并推送更改
       - name: Commit and Push Changes
         run: |
-          cd ./rules
           if [ -n "$(git status --porcelain)" ]; then
             git add --all
-            git commit -m "${{ env.BUILDTIME }} - Update rules"
+            git commit -m "${{ env.BUILDTIME }} rules conversion"
             git push origin main
           else
             echo "No changes to commit"
           fi
-
-      # 第8步：清理克隆的仓库和临时文件
-      - name: Clean up
-        run: |
-          rm -rf ./Adblock4limbo  # 删除克隆的 Adblock4limbo 仓库
-          rm -rf ./rules/proxy/*.list  # 删除转换后的 .list 文件
