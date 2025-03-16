@@ -58,7 +58,7 @@ jobs:
             | xargs wget -q
           tar -xf subconverter_linux64.tar.gz
           ./subconverter/subconverter &
-          python3 -m http.server 8080 --bind 127.0.0.1 --directory './temp/rules/' &
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory './rule/' &
 
       # 6. 启动 mihomo 服务用于生成 .mrs 文件
       - name: Background run mihomo
