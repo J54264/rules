@@ -36,3 +36,5 @@ DOMAIN,secure.internetdownloadmanager.com
 DOMAIN,mirror.internetdownloadmanager.com
 DOMAIN,mirror2.internetdownloadmanager.com
 DOMAIN,mirror3.internetdownloadmanager.com
+# bing
+DOMAIN,cn.bing.com
