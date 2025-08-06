@@ -36,8 +36,3 @@ DOMAIN,secure.internetdownloadmanager.com
 DOMAIN,mirror.internetdownloadmanager.com
 DOMAIN,mirror2.internetdownloadmanager.com
 DOMAIN,mirror3.internetdownloadmanager.com
-# MS
-DOMAIN-SUFFIX,microsoft.com
-DOMAIN-SUFFIX,bing.com
-DOMAIN-KEYWORD,microsoft
-DOMAIN-KEYWORD,bing
