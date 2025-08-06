@@ -28,8 +28,3 @@ DOMAIN-SUFFIX,anime1.me
 #AI
 DOMAIN-SUFFIX,chat.deepseek.com
 
-# MS
-DOMAIN-SUFFIX,microsoft.com
-DOMAIN-SUFFIX,bing.com
-DOMAIN-KEYWORD,microsoft
-DOMAIN-KEYWORD,bing
