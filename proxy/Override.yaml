@@ -1,411 +1,679 @@
-```yaml
-content:
-  proxy-groups:
-    - name: "🎯 节点选择"
-      icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Proxy.png"
-      type: select
-      proxies:
-        - "🇹🇼 台湾节点"
-        - "🇸🇬 狮城节点"
-        - "🇯🇵 日本节点"
-        - "🇺🇸 美国节点"
-        - "🇰🇷 韩国节点"
-        - "🇭🇰 香港节点"
-        - "🔁 手动切换"
-        - "DIRECT"
+# ============================================================
+# Clash / Mihomo  Override 复写文件
+# 来源逻辑：文件 B（SubConverter ACL4SSR 自定义规则）
+# 输出格式：文件 A（Clash Meta YAML）
+# 特性：
+#   · 全部策略组、规则集名称已去 Emoji
+#   · 图标沿用 Qure IconSet/Color CDN 风格
+#   · 地区节点组使用 url-test + filter 自动筛选
+#   · 直接替换订阅中的 proxy-groups / rule-providers / rules
+# ============================================================
+# 适配客户端：mihomo-party / Clash Verge Rev / Clash Meta
+# Override 机制说明：
+#   本文件使用「直接替换」模式。
+#   proxy-groups   → 完整替换订阅原有分组（节点由 include-all 自动注入）
+#   rule-providers → 完整替换订阅原有规则集
+#   rules          → 完整替换订阅原有路由规则
+# ============================================================
 
-    - name: "🔁 手动切换"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/select.png"
-      type: select
-      include-all: true
-      filter: "(?i).*"
-      proxies:
-        - "DIRECT"
-      # 已移除对 🎯 节点选择 的引用以避免间接循环；include-all 将自动从订阅中抓取匹配节点
+# ──────────────────────────────────────────────────────────
+# 一、策略组  proxy-groups
+# ──────────────────────────────────────────────────────────
+proxy-groups:
 
-    - name: "♻️ 自动选择"
-      icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Auto.png"
-      type: url-test
-      include-all: true
-      filter: "(?i).*"
-      interval: 300
-      tolerance: 50
-      url: "http://www.gstatic.com/generate_204"
-      proxies:
-        - "DIRECT"
-      # include-all: true 的组仅保留 DIRECT，订阅中匹配的节点会被自动纳入
+  # ── 核心调度组 ────────────────────────────────────────────
 
-    - name: "📨 电报消息"
-      icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Telegram.png"
-      type: select
-      proxies:
-        - "🎯 节点选择"
-        - "♻️ 自动选择"
-        - "🇸🇬 狮城节点"
-        - "🇹🇼 台湾节点"
-        - "🇯🇵 日本节点"
-        - "🇺🇸 美国节点"
-        - "🇰🇷 韩国节点"
-        - "🇭🇰 香港节点"
-        - "🔁 手动切换"
-        - "DIRECT"
+  - name: 节点选择
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Proxy.png
+    type: select
+    proxies:
+      - 自动选择
+      - 香港
+      - 台湾
+      - 新加坡
+      - 日本
+      - 美国
+      - 韩国
+      - 手动切换
+      - 其他节点
+      - DIRECT
 
-    - name: "🤖 OpenAi"
-      icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Bot.png"
-      type: select
-      proxies:
-        - "🎯 节点选择"
-        - "♻️ 自动选择"
-        - "AI-UNHK"
-        - "🇸🇬 狮城节点"
-        - "🇹🇼 台湾节点"
-        - "🇯🇵 日本节点"
-        - "🇺🇸 美国节点"
-        - "🇰🇷 韩国节点"
-        - "🇭🇰 香港节点"
-        - "🔁 手动切换"
-        - "DIRECT"
+  - name: 手动切换
+    icon: https://testingcf.jsdelivr.net/gh/shindgewongxj/WHATSINStash@master/icon/select.png
+    type: select
+    include-all: true
 
-    - name: "AI-UNHK"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/ai.png"
-      type: select
-      include-all: true
-      filter: "(?i)^(?!.*(港|HK|Hong Kong|香港)).*$"
-      exclude-filter: "(?i)港|HK|Hong Kong|香港"
-      proxies:
-        - "DIRECT"
-      # include-all 的地区分组仅保留 DIRECT；filter/ exclude-filter 保持以便自动匹配订阅节点
+  - name: 自动选择
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Auto.png
+    type: url-test
+    include-all: true
+    interval: 300
+    tolerance: 50
 
-    - name: "📺 油管视频"
-      icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/YouTube.png"
-      type: select
-      proxies:
-        - "🎯 节点选择"
-        - "♻️ 自动选择"
-        - "🇸🇬 狮城节点"
-        - "🇭🇰 香港节点"
-        - "🇹🇼 台湾节点"
-        - "🇯🇵 日本节点"
-        - "🇺🇸 美国节点"
-        - "🇰🇷 韩国节点"
-        - "🔁 手动切换"
-        - "DIRECT"
+  - name: 漏网之鱼
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Final.png
+    type: select
+    proxies:
+      - 节点选择
+      - 自动选择
+      - DIRECT
+      - 香港
+      - 台湾
+      - 新加坡
+      - 日本
+      - 美国
+      - 韩国
+      - 手动切换
 
-    - name: "🎬 奈飞视频"
-      icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Netflix.png"
-      type: select
-      proxies:
-        - "🎯 节点选择"
-        - "♻️ 自动选择"
-        - "奈飞节点"
-        - "🇸🇬 狮城节点"
-        - "🇭🇰 香港节点"
-        - "🇹🇼 台湾节点"
-        - "🇯🇵 日本节点"
-        - "🇺🇸 美国节点"
-        - "🇰🇷 韩国节点"
-        - "🔁 手动切换"
-        - "DIRECT"
+  # ── 应用专项组 ────────────────────────────────────────────
 
-    - name: "🕹️ 巴哈姆特"
-      icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Bahamut.png"
-      type: select
-      proxies:
-        - "🇹🇼 台湾节点"
-        - "🎯 节点选择"
-        - "🔁 手动切换"
-        - "DIRECT"
+  - name: Game
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Game.png
+    type: select
+    proxies:
+      - 手动切换
+      - DIRECT
 
-    - name: "🎵 哔哩哔哩"
-      icon: "https://cdn.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/bilibili.png"
-      type: select
-      proxies:
-        - "全球直连"
-        - "🇹🇼 台湾节点"
-        - "🇭🇰 香港节点"
-        - "🎯 节点选择"
-        - "🔁 手动切换"
-        - "DIRECT"
+  - name: Japan代理
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Japan.png
+    type: select
+    proxies:
+      - DIRECT
+      - 节点选择
+      - 自动选择
+      - 新加坡
+      - 香港
+      - 台湾
+      - 美国
+      - 韩国
+      - 手动切换
 
-    - name: "🇭🇰 香港节点"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/hk.png"
-      type: select
-      include-all: true
-      filter: "(?i)港|HK|Hong Kong|香港"
-      proxies:
-        - "DIRECT"
+  - name: Telegram
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Telegram.png
+    type: select
+    proxies:
+      - 节点选择
+      - 自动选择
+      - 新加坡
+      - 香港
+      - 台湾
+      - 日本
+      - 美国
+      - 韩国
+      - 手动切换
+      - DIRECT
 
-    - name: "🇯🇵 日本节点"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/jp.png"
-      type: select
-      include-all: true
-      filter: "(?i)日|JP|日本|Japan"
-      proxies:
-        - "DIRECT"
+  - name: Spotify
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Spotify.png
+    type: select
+    proxies:
+      - 节点选择
+      - 自动选择
+      - 新加坡
+      - 香港
+      - 台湾
+      - 日本
+      - 美国
+      - 韩国
+      - 手动切换
+      - DIRECT
 
-    - name: "🇺🇸 美国节点"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/us.png"
-      type: select
-      include-all: true
-      filter: "(?i)美|US|USA|United States|美国"
-      proxies:
-        - "DIRECT"
+  - name: YouTube
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/YouTube.png
+    type: select
+    proxies:
+      - 节点选择
+      - 自动选择
+      - 新加坡
+      - 香港
+      - 台湾
+      - 日本
+      - 美国
+      - 韩国
+      - 手动切换
+      - DIRECT
 
-    - name: "🇹🇼 台湾节点"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/tw.png"
-      type: select
-      include-all: true
-      filter: "(?i)台|TW|Taiwan|台湾"
-      proxies:
-        - "DIRECT"
+  - name: TikTok
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/TikTok.png
+    type: select
+    proxies:
+      - 节点选择
+      - 自动选择
+      - 新加坡
+      - 香港
+      - 台湾
+      - 日本
+      - 美国
+      - 韩国
+      - 手动切换
+      - DIRECT
 
-    - name: "🇸🇬 狮城节点"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/sg.png"
-      type: select
-      include-all: true
-      filter: "(?i)新加坡|SG|Singapore|狮城"
-      proxies:
-        - "DIRECT"
+  - name: 巴哈姆特
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Bahamut.png
+    type: select
+    proxies:
+      - 台湾
+      - 香港
+      - 节点选择
+      - 手动切换
+      - DIRECT
 
-    - name: "🇰🇷 韩国节点"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/kr.png"
-      type: select
-      include-all: true
-      filter: "(?i)韩|KR|Korea|韩国"
-      proxies:
-        - "DIRECT"
+  - name: 哔哩哔哩
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/bilibili.png
+    type: select
+    proxies:
+      - DIRECT
+      - 台湾
+      - 香港
+      - 手动切换
 
-    - name: "全球直连"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/global.png"
-      type: select
-      proxies:
-        - "DIRECT"
-        - "🎯 节点选择"
+  - name: 国外媒体
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/ForeignMedia.png
+    type: select
+    proxies:
+      - 节点选择
+      - 自动选择
+      - 香港
+      - 台湾
+      - 新加坡
+      - 日本
+      - 美国
+      - 韩国
+      - 手动切换
+      - DIRECT
 
-    - name: "奈飞节点"
-      icon: "https://raw.githubusercontent.com/shoushou-shizuku/shizuku-icons/main/icons/netflix.png"
-      type: select
-      proxies:
-        - "DIRECT"
+  - name: 国内媒体
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/DomesticMedia.png
+    type: select
+    proxies:
+      - DIRECT
+      - 香港
+      - 台湾
+      - 新加坡
+      - 日本
+      - 手动切换
 
-  rule-providers:
-    "🎮 Game":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/J54264/rules/main/proxy/Game.list"
-      path: ./rules/Game.list
-      interval: 86400
+  - name: 微软
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Microsoft.png
+    type: select
+    proxies:
+      - DIRECT
+      - 节点选择
+      - 美国
+      - 香港
+      - 台湾
+      - 新加坡
+      - 日本
+      - 韩国
+      - 手动切换
 
-    "🇯🇵 Japan 代理":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/J54264/rules/main/proxy/proxyjp.list"
-      path: ./rules/proxyjp.list
-      interval: 86400
+  - name: Apple
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Apple.png
+    type: select
+    proxies:
+      - DIRECT
+      - 节点选择
+      - 美国
+      - 香港
+      - 台湾
+      - 新加坡
+      - 日本
+      - 韩国
+      - 手动切换
 
-    "Ⓜ 微软":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/J54264/rules/main/proxy/ms.list"
-      path: ./rules/ms.list
-      interval: 86400
+  - name: 游戏平台
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Game.png
+    type: select
+    proxies:
+      - DIRECT
+      - 节点选择
+      - 美国
+      - 香港
+      - 台湾
+      - 新加坡
+      - 日本
+      - 韩国
+      - 手动切换
 
-    "🚀 节点选择 列表":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/J54264/rules/main/proxy/Proxy.list"
-      path: ./rules/Proxy.list
-      interval: 86400
+  - name: IP测试
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Available.png
+    type: select
+    proxies:
+      - 自动选择
+      - 香港
+      - 台湾
+      - 新加坡
+      - 日本
+      - 美国
+      - 韩国
+      - 手动切换
+      - DIRECT
 
-    "⛔️ 截断 Reject":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/J54264/rules/main/proxy/Reject.list"
-      path: ./rules/Reject.list
-      interval: 86400
+  - name: 直连
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Direct.png
+    type: select
+    proxies:
+      - DIRECT
+      - 节点选择
+      - 自动选择
 
-    "⛔️ Adblock4limbo":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/Adblock4limbo.list"
-      path: ./rules/Adblock4limbo.list
-      interval: 86400
+  - name: 拦截
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/AdBlack.png
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
 
-    "⛔️ BanAD":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/BanAD.list"
-      path: ./rules/BanAD.list
-      interval: 86400
+  # ── 地区节点组（url-test 自动筛选） ──────────────────────
 
-    "⛔️ BanProgramAD":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/BanProgramAD.list"
-      path: ./rules/BanProgramAD.list
-      interval: 86400
+  - name: 香港
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Hong_Kong.png
+    type: url-test
+    include-all: true
+    filter: "(?i)港|HK|hk|Hong Kong|HongKong|hongkong"
+    interval: 300
+    tolerance: 50
 
-    "🔗 直连 Direct":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/J54264/rules/main/proxy/Direct.list"
-      path: ./rules/Direct.list
-      interval: 86400
+  - name: 日本
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Japan.png
+    type: url-test
+    include-all: true
+    filter: "(?i)日本|东京|東京都|大阪|泉日|埼玉|[^-]日|JP|Japan"
+    interval: 300
+    tolerance: 50
 
-    "🔗 LAN":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/LocalAreaNetwork.list"
-      path: ./rules/LocalAreaNetwork.list
-      interval: 86400
+  - name: 美国
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/United_States.png
+    type: url-test
+    include-all: true
+    filter: "(?i)美|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|US|SFO|NYC|Oregon|United States"
+    interval: 300
+    tolerance: 150
 
-    "🔗 UnBan":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/UnBan.list"
-      path: ./rules/UnBan.list
-      interval: 86400
+  - name: 台湾
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Taiwan.png
+    type: url-test
+    include-all: true
+    filter: "(?i)台|新北|彰化|TW|Taiwan"
+    interval: 300
+    tolerance: 50
 
-    "🔗 GoogleCN":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/GoogleCN.list"
-      path: ./rules/GoogleCN.list
-      interval: 86400
+  - name: 新加坡
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Singapore.png
+    type: url-test
+    include-all: true
+    filter: "(?i)新加坡|坡|狮城|SG|Singapore"
+    interval: 300
+    tolerance: 50
 
-    "OneDrive":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/OneDrive/OneDrive.list"
-      path: ./rules/OneDrive.list
-      interval: 86400
+  - name: 韩国
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Korea.png
+    type: url-test
+    include-all: true
+    filter: "(?i)KR|Korea|KOR|首尔|韩|韓"
+    interval: 300
+    tolerance: 50
 
-    "Microsoft":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Microsoft/Microsoft.list"
-      path: ./rules/Microsoft.list
-      interval: 86400
+  # 其他节点：排除所有已知地区后剩余节点
+  - name: 其他节点
+    icon: https://testingcf.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Global.png
+    type: select
+    include-all: true
+    filter: "^(?!.*(港|HK|hk|Hong Kong|HongKong|hongkong|日本|东京|東京都|大阪|泉日|埼玉|JP|Japan|美|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|US|SFO|NYC|Oregon|United States|台|中华民国|新北|彰化|TW|Taiwan|新加坡|坡|狮城|SG|Singapore|KR|Korea|KOR|首尔|韩|韓)).*$"
 
-    "Apple":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple.list"
-      path: ./rules/Apple.list
-      interval: 86400
 
-    "TikTok":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/TikTok/TikTok.list"
-      path: ./rules/TikTok.list
-      interval: 86400
+# ──────────────────────────────────────────────────────────
+# 二、规则集  rule-providers
+# ──────────────────────────────────────────────────────────
+# 命名规则：直接使用规则文件名（不含路径与 .list 扩展名）
+# 来源重复时在末尾加 _bm（blackmatrix7）或 _j54（J54264）以区分
+# behavior 说明：
+#   · classical → 混合型规则（DOMAIN/IP/PROCESS 均可）
+#   · domain    → 纯域名列表（仅 DOMAIN/DOMAIN-SUFFIX）
+#   · ipcidr    → 纯 IP CIDR 列表
+# format 说明：
+#   · text → 每行一条规则（ACL4SSR / J54264 / limbopro 格式）
+#   · yaml → payload: [...] 格式（blackmatrix7 格式）
+# ──────────────────────────────────────────────────────────
+rule-providers:
 
-    "Telegram":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.list"
-      path: ./rules/Telegram.list
-      interval: 86400
+  # ── J54264 自定义规则集 ───────────────────────────────────
+  Game_j54:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/J54264/rules/main/proxy/Game.list
+    path: ./ruleset/Game_j54.list
+    interval: 86400
 
-    "YouTube":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/YouTube/YouTube.list"
-      path: ./rules/YouTube.list
-      interval: 86400
+  proxyjp:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/J54264/rules/main/proxy/proxyjp.list
+    path: ./ruleset/proxyjp.list
+    interval: 86400
 
-    "Bahamut":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/Bahamut.list"
-      path: ./rules/Bahamut.list
-      interval: 86400
+  ms_j54:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/J54264/rules/main/proxy/ms.list
+    path: ./ruleset/ms_j54.list
+    interval: 86400
 
-    "BilibiliHMT":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/BilibiliHMT.list"
-      path: ./rules/BilibiliHMT.list
-      interval: 86400
+  Proxy_j54:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/J54264/rules/main/proxy/Proxy.list
+    path: ./ruleset/Proxy_j54.list
+    interval: 86400
 
-    "Bilibili":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/Bilibili.list"
-      path: ./rules/Bilibili.list
-      interval: 86400
+  Reject_j54:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/J54264/rules/main/proxy/Reject.list
+    path: ./ruleset/Reject_j54.list
+    interval: 86400
 
-    "ChinaMedia":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/ChinaMedia/ChinaMedia.list"
-      path: ./rules/ChinaMedia.list
-      interval: 86400
+  Direct_j54:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/J54264/rules/main/proxy/Direct.list
+    path: ./ruleset/Direct_j54.list
+    interval: 86400
 
-    "GlobalMedia":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GlobalMedia/GlobalMedia.list"
-      path: ./rules/GlobalMedia.list
-      interval: 86400
+  # ── ACL4SSR 规则集 ────────────────────────────────────────
+  Adblock4limbo:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/Adblock4limbo.list
+    path: ./ruleset/Adblock4limbo.list
+    interval: 86400
 
-    "IP-Check":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/liandu2024/clash/main/Check.list"
-      path: ./rules/Check.list
-      interval: 86400
+  BanAD:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/BanAD.list
+    path: ./ruleset/BanAD.list
+    interval: 86400
 
-    "ProxyGFWlist":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ProxyGFWlist.list"
-      path: ./rules/ProxyGFWlist.list
-      interval: 86400
+  BanProgramAD:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/BanProgramAD.list
+    path: ./ruleset/BanProgramAD.list
+    interval: 86400
 
-    "ChinaIp":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ChinaIp.list"
-      path: ./rules/ChinaIp.list
-      interval: 86400
+  LocalAreaNetwork:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/LocalAreaNetwork.list
+    path: ./ruleset/LocalAreaNetwork.list
+    interval: 86400
 
-    "ChinaDomain":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ChinaDomain.list"
-      path: ./rules/ChinaDomain.list
-      interval: 86400
+  UnBan:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/UnBan.list
+    path: ./ruleset/UnBan.list
+    interval: 86400
 
-    "ChinaCompanyIp":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ChinaCompanyIp.list"
-      path: ./rules/ChinaCompanyIp.list
-      interval: 86400
+  GoogleCN:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/GoogleCN.list
+    path: ./ruleset/GoogleCN.list
+    interval: 86400
 
-    "Download":
-      type: http
-      behavior: classical
-      url: "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Download.list"
-      path: ./rules/Download.list
-      interval: 86400
+  SteamCN:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/SteamCN.list
+    path: ./ruleset/SteamCN.list
+    interval: 86400
 
-  rules:
-    - "RULE-SET,🎮 Game,🎯 节点选择"
-    - "RULE-SET,🇯🇵 Japan 代理,🎯 节点选择"
-    - "RULE-SET,Ⓜ 微软,🎯 节点选择"
-    - "RULE-SET,🚀 节点选择 列表,🎯 节点选择"
-    - "RULE-SET,⛔️ 截断 Reject,⛔️ 截断 Reject"
-    - "RULE-SET,⛔️ Adblock4limbo,⛔️ Adblock4limbo"
-    - "RULE-SET,⛔️ BanAD,⛔️ BanAD"
-    - "RULE-SET,⛔️ BanProgramAD,⛔️ BanProgramAD"
-    - "RULE-SET,🔗 直连 Direct,🔗 直连 Direct"
-    - "IP-CIDR,127.0.0.0/8,DIRECT"
-    - "IP-CIDR,10.0.0.0/8,DIRECT"
-    - "IP-CIDR,172.16.0.0/12,DIRECT"
-    - "IP-CIDR,192.168.0.0/16,DIRECT"
-    - "GEOIP,CN,DIRECT"
-    - "FINAL,🎯 节点选择"
-```
+  Bahamut:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/Bahamut.list
+    path: ./ruleset/Bahamut.list
+    interval: 86400
+
+  BilibiliHMT:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/BilibiliHMT.list
+    path: ./ruleset/BilibiliHMT.list
+    interval: 86400
+
+  Bilibili:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/Bilibili.list
+    path: ./ruleset/Bilibili.list
+    interval: 86400
+
+  ChinaDomain:
+    type: http
+    behavior: domain
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ChinaDomain.list
+    path: ./ruleset/ChinaDomain.list
+    interval: 86400
+
+  ChinaCompanyIp:
+    type: http
+    behavior: ipcidr
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ChinaCompanyIp.list
+    path: ./ruleset/ChinaCompanyIp.list
+    interval: 86400
+
+  Download:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Download.list
+    path: ./ruleset/Download.list
+    interval: 86400
+
+  # ── blackmatrix7 规则集（yaml 格式）───────────────────────
+  Microsoft:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Microsoft/Microsoft.list
+    path: ./ruleset/Microsoft_bm.list
+    interval: 86400
+
+  Apple:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Apple/Apple.list
+    path: ./ruleset/Apple_bm.list
+    interval: 86400
+
+  TikTok:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/TikTok/TikTok.list
+    path: ./ruleset/TikTok_bm.list
+    interval: 86400
+
+  Telegram:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Telegram/Telegram.list
+    path: ./ruleset/Telegram_bm.list
+    interval: 86400
+
+  Epic:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Epic/Epic.list
+    path: ./ruleset/Epic_bm.list
+    interval: 86400
+
+  EA:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/EA/EA.list
+    path: ./ruleset/EA_bm.list
+    interval: 86400
+
+  Sony:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Sony/Sony.list
+    path: ./ruleset/Sony_bm.list
+    interval: 86400
+
+  Steam:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Steam/Steam.list
+    path: ./ruleset/Steam_bm.list
+    interval: 86400
+
+  Nintendo:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Nintendo/Nintendo.list
+    path: ./ruleset/Nintendo_bm.list
+    interval: 86400
+
+  Spotify:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Spotify/Spotify.list
+    path: ./ruleset/Spotify_bm.list
+    interval: 86400
+
+  YouTube:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/YouTube/YouTube.list
+    path: ./ruleset/YouTube_bm.list
+    interval: 86400
+
+  ChinaMedia:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/ChinaMedia/ChinaMedia.list
+    path: ./ruleset/ChinaMedia_bm.list
+    interval: 86400
+
+  GlobalMedia:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/GlobalMedia/GlobalMedia.list
+    path: ./ruleset/GlobalMedia_bm.list
+    interval: 86400
+
+  Proxy_bm:
+    type: http
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Proxy/Proxy.list
+    path: ./ruleset/Proxy_bm.list
+    interval: 86400
+
+  # ── 其他来源 ──────────────────────────────────────────────
+  Check:
+    type: http
+    behavior: classical
+    format: text
+    url: https://raw.githubusercontent.com/liandu2024/clash/main/Check.list
+    path: ./ruleset/Check.list
+    interval: 86400
+
+
+# ──────────────────────────────────────────────────────────
+# 三、路由规则  rules
+# 顺序与文件 B 的 ruleset 声明顺序保持一致
+# 优先级：从上到下，首次匹配生效
+# ──────────────────────────────────────────────────────────
+rules:
+  # ── 自定义规则（J54264）────────────────────────────────────
+  - "RULE-SET,Game_j54,Game"
+  - "RULE-SET,proxyjp,Japan代理"
+  - "RULE-SET,ms_j54,微软"
+  - "RULE-SET,Proxy_j54,节点选择"
+
+  # ── 拦截广告 ──────────────────────────────────────────────
+  - "RULE-SET,Reject_j54,拦截"
+  - "RULE-SET,Adblock4limbo,拦截"
+  - "RULE-SET,BanAD,拦截"
+  - "RULE-SET,BanProgramAD,拦截"
+
+  # ── 直连基础 ──────────────────────────────────────────────
+  - "RULE-SET,Direct_j54,直连"
+  - "RULE-SET,LocalAreaNetwork,直连"
+  - "RULE-SET,UnBan,直连"
+  - "RULE-SET,GoogleCN,直连"
+  - "RULE-SET,SteamCN,直连"
+
+  # ── 微软 / 苹果 ───────────────────────────────────────────
+  - "RULE-SET,Microsoft,微软"
+  - "RULE-SET,Apple,Apple"
+
+  # ── 流媒体 ───────────────────────────────────────────────
+  - "RULE-SET,TikTok,TikTok"
+  - "RULE-SET,Telegram,Telegram"
+  - "RULE-SET,Spotify,Spotify"
+  - "RULE-SET,YouTube,YouTube"
+  - "RULE-SET,Bahamut,巴哈姆特"
+  - "RULE-SET,BilibiliHMT,哔哩哔哩"
+  - "RULE-SET,Bilibili,哔哩哔哩"
+  - "RULE-SET,ChinaMedia,国内媒体"
+  - "RULE-SET,GlobalMedia,国外媒体"
+
+  # ── 游戏平台 ─────────────────────────────────────────────
+  - "RULE-SET,Epic,游戏平台"
+  - "RULE-SET,EA,游戏平台"
+  - "RULE-SET,Sony,游戏平台"
+  - "RULE-SET,Steam,游戏平台"
+  - "RULE-SET,Nintendo,游戏平台"
+
+  # ── IP 测试 ───────────────────────────────────────────────
+  - "RULE-SET,Check,IP测试"
+
+  # ── 代理 GFW 列表 ─────────────────────────────────────────
+  - "RULE-SET,Proxy_bm,节点选择"
+
+  # ── 国内直连 ─────────────────────────────────────────────
+  - "RULE-SET,ChinaDomain,直连"
+  - "RULE-SET,ChinaCompanyIp,直连"
+  - "RULE-SET,Download,直连"
+
+  # ── GEOIP 兜底 ───────────────────────────────────────────
+  - "GEOIP,CN,直连"
+
+  # ── 最终兜底 ─────────────────────────────────────────────
+  - "MATCH,漏网之鱼"
